@@ -1,11 +1,13 @@
-use crate::{anim::AsepriteAnimation, Aseprite, error};
+use crate::{anim::AsepriteAnimation, error, Aseprite};
 use bevy::{
     asset::{AssetLoader, AsyncReadExt},
     prelude::*,
-    render::render_resource::{Extent3d, TextureDimension, TextureFormat},
+    render::{
+        render_asset::RenderAssetUsages,
+        render_resource::{Extent3d, TextureDimension, TextureFormat},
+    },
 };
 use bevy_aseprite_reader as reader;
-
 
 #[derive(Debug, Default)]
 pub struct AsepriteLoader;
@@ -46,7 +48,7 @@ pub(crate) fn process_load(
     mut asset_events: EventReader<AssetEvent<Aseprite>>,
     mut aseprites: ResMut<Assets<Aseprite>>,
     mut images: ResMut<Assets<Image>>,
-    mut atlases: ResMut<Assets<TextureAtlas>>,
+    mut atlases: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     asset_events.read().for_each(|event| {
         if let AssetEvent::Added { id } | AssetEvent::Modified { id } = event {
@@ -87,24 +89,30 @@ pub(crate) fn process_load(
             let mut frame_handles = vec![];
             let mut atlas = TextureAtlasBuilder::default();
 
-            for (idx, image) in ase_images.into_iter().enumerate() {
-                let texture = Image::new(
-                    Extent3d {
-                        width: image.width(),
-                        height: image.height(),
-                        depth_or_array_layers: 1,
-                    },
-                    TextureDimension::D2,
-                    image.into_raw(),
-                    TextureFormat::Rgba8UnormSrgb,
-                );
-                let _label = format!("Frame{}", idx);
+            let textures = ase_images
+                .into_iter()
+                .map(|image| {
+                    Image::new(
+                        Extent3d {
+                            width: image.width(),
+                            height: image.height(),
+                            depth_or_array_layers: 1,
+                        },
+                        TextureDimension::D2,
+                        image.into_raw(),
+                        TextureFormat::Rgba8UnormSrgb,
+                        RenderAssetUsages::default(),
+                    )
+                })
+                .collect::<Vec<_>>();
+            for texture in textures.iter() {
                 let texture_handle = images.add(texture.clone());
                 frame_handles.push(texture_handle.clone_weak());
 
-                atlas.add_texture(texture_handle.id(), &texture);
+                atlas.add_texture(Some(texture_handle.id()), texture);
             }
-            let atlas = match atlas.finish(&mut *images) {
+
+            let (atlas, _) = match atlas.finish() {
                 Ok(atlas) => atlas,
                 Err(err) => {
                     error!("{:?}", err);
@@ -132,7 +140,7 @@ pub(crate) fn insert_sprite_sheet(
             &Handle<Aseprite>,
             &mut AsepriteAnimation,
         ),
-        Without<TextureAtlasSprite>,
+        Without<Sprite>,
     >,
 ) {
     for (entity, &transform, handle, _anim) in query.iter_mut() {
@@ -153,7 +161,10 @@ pub(crate) fn insert_sprite_sheet(
             }
         };
         commands.entity(entity).insert(SpriteSheetBundle {
-            texture_atlas: atlas,
+            atlas: TextureAtlas {
+                layout: atlas,
+                index: 0,
+            },
             transform,
             ..Default::default()
         });

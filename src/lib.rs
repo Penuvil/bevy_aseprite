@@ -13,8 +13,8 @@ use bevy::{
         bundle::Bundle,
         schedule::{IntoSystemConfigs, SystemSet},
     },
-    reflect::{TypePath, TypeUuid},
-    sprite::TextureAtlas,
+    reflect::TypePath,
+    sprite::TextureAtlasLayout,
     transform::components::{GlobalTransform, Transform},
 };
 
@@ -47,8 +47,7 @@ impl Plugin for AsepritePlugin {
     }
 }
 
-#[derive(Debug, Clone, TypePath, TypeUuid, Asset)]
-#[uuid = "b29abc81-6179-42e4-b696-3a5a52f44f73"]
+#[derive(Debug, Clone, TypePath, Asset)]
 pub struct Aseprite {
     // Data is dropped after the atlas is built
     data: Option<reader::Aseprite>,
@@ -58,7 +57,7 @@ pub struct Aseprite {
     // we keep a mapping of frame# -> atlas index here
     frame_to_idx: Vec<usize>,
     // Atlas that gets built from the frame info of the aseprite file
-    atlas: Option<Handle<TextureAtlas>>,
+    atlas: Option<Handle<TextureAtlasLayout>>,
 }
 
 /// A bundle defining a drawn aseprite
