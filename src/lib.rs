@@ -14,6 +14,7 @@ use bevy::{
         schedule::{IntoSystemConfigs, SystemSet},
     },
     reflect::TypePath,
+    render::texture::Image,
     sprite::TextureAtlasLayout,
     transform::components::{GlobalTransform, Transform},
 };
@@ -58,6 +59,7 @@ pub struct Aseprite {
     frame_to_idx: Vec<usize>,
     // Atlas that gets built from the frame info of the aseprite file
     atlas: Option<Handle<TextureAtlasLayout>>,
+    image: Option<Handle<Image>>,
 }
 
 /// A bundle defining a drawn aseprite

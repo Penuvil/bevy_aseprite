@@ -35,6 +35,7 @@ impl AssetLoader for AsepriteLoader {
                 info: None,
                 frame_to_idx: vec![],
                 atlas: None,
+                image: None,
             })
         })
     }
@@ -112,7 +113,7 @@ pub(crate) fn process_load(
                 atlas.add_texture(Some(texture_handle.id()), texture);
             }
 
-            let (atlas, _) = match atlas.finish() {
+            let (atlas, image) = match atlas.finish() {
                 Ok(atlas) => atlas,
                 Err(err) => {
                     error!("{:?}", err);
@@ -124,8 +125,10 @@ pub(crate) fn process_load(
                 ase.frame_to_idx.push(atlas_idx);
             }
             let atlas_handle = atlases.add(atlas);
+            let image_handle = images.add(image);
             ase.info = Some(data.into());
             ase.atlas = Some(atlas_handle);
+            ase.image = Some(image_handle);
         }
     });
 }
@@ -140,7 +143,7 @@ pub(crate) fn insert_sprite_sheet(
             &Handle<Aseprite>,
             &mut AsepriteAnimation,
         ),
-        Without<Sprite>,
+        Without<TextureAtlas>,
     >,
 ) {
     for (entity, &transform, handle, _anim) in query.iter_mut() {
@@ -160,11 +163,19 @@ pub(crate) fn insert_sprite_sheet(
                 continue;
             }
         };
+        let image = match aseprite.image.clone() {
+            Some(image) => image,
+            None => {
+                debug!("Asperite image not ready");
+                continue;
+            }
+        };
         commands.entity(entity).insert(SpriteSheetBundle {
             atlas: TextureAtlas {
                 layout: atlas,
                 index: 0,
             },
+            texture: image,
             transform,
             ..Default::default()
         });
